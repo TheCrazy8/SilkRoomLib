@@ -36,6 +36,37 @@ Notes:
 - `SilksongRoomIntegrator` (default) logs what was loaded and spawns each prefab under a persistent `__RoomsSandbox` object, inactive by default.
 - To properly stitch rooms into the game, replace `SilksongRoomIntegrator` with your own implementation of `IRoomIntegrator` and handle scene-specific placement and transitions.
 
+## Use from another mod (register your own rooms)
+
+If you want to ship rooms from a separate mod and have this plugin load them, add a dependency and call the public API.
+
+1) Add a dependency attribute to your plugin so this one loads first:
+
+```csharp
+using BepInEx;
+using SilksongRooms._1;
+
+[BepInDependency("io.github.silksongrooms__1")]
+[BepInPlugin("your.guid.here", "Your Mod", "1.0.0")]
+public class YourMod : BaseUnityPlugin
+{
+  private void Awake()
+  {
+    // Register an entire Rooms folder
+    var myRooms = System.IO.Path.Combine(BepInEx.Paths.PluginPath, Info.Metadata.Name, "Rooms");
+    RoomsApi.RegisterRoomsFolder(myRooms);
+
+    // Or register a single JSON file
+    // RoomsApi.RegisterRoomJson(System.IO.Path.Combine(myRooms, "my_room.room.json"));
+  }
+}
+```
+
+Notes:
+- `bundle` paths inside your JSON are resolved relative to the folder you register (or the JSON file directory if you use `RegisterRoomJson`).
+- You can call the API any time; early calls are queued until this plugin finishes starting.
+- You can subscribe to `RoomsApi.RoomsAdded` to react when rooms are loaded.
+
 ## Building & copying
 
 - The build copies your plugin DLL, PDB, and the `Rooms/` contents to `BepInEx/plugins/<YourModName>/` if `SilksongPath.props` is configured.
