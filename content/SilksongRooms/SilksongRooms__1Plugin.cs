@@ -12,7 +12,7 @@ namespace SilksongRooms._1;
 [BepInAutoPlugin(id: "io.github.silksongrooms__1")] 
 public partial class SilksongRooms__1Plugin : BaseUnityPlugin
 {
-    internal static ManualLogSource LogS => _log ??= Logger.CreateLogSource("SilksongRooms");
+    internal static ManualLogSource LogS => _log ??= global::BepInEx.Logging.Logger.CreateLogSource("SilksongRooms");
     private static ManualLogSource? _log;
 
     internal static SilksongRooms__1Plugin? InstanceOrNull { get; private set; }
