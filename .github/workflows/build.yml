@@ -36,7 +36,7 @@ jobs:
       - name: Restore
         working-directory: content/SilksongRooms
         run: |
-          dotnet restore SilksongRooms.1.csproj
+          dotnet restore SilksongRooms.1.csproj -p:game-version=latest
 
       - name: Build (Release)
         working-directory: content/SilksongRooms
