@@ -36,12 +36,12 @@ jobs:
       - name: Restore
         working-directory: content/SilksongRooms
         run: |
-          dotnet restore SilksongRooms.1.csproj -p:game-version=latest
+          dotnet restore SilksongRooms.1.csproj -p:game-version=latest -p:UnityVersion=6000.*
 
       - name: Build (Release)
         working-directory: content/SilksongRooms
         run: |
-          dotnet build SilksongRooms.1.csproj -c Release -p:SkipCopyMod=true -p:game-version=latest --nologo --no-restore
+          dotnet build SilksongRooms.1.csproj -c Release -p:SkipCopyMod=true -p:game-version=latest -p:UnityVersion=6000.* --nologo --no-restore
 
       - name: Collect artifacts
         shell: pwsh
