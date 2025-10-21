@@ -8,7 +8,7 @@ Highlights:
 
 Use from another mod:
 
-
+```csharp
 using BepInEx;
 using SilksongRooms._1;
 
@@ -24,3 +24,4 @@ public class YourMod : BaseUnityPlugin
 		// RoomsApi.RegisterRoomJson(System.IO.Path.Combine(myRooms, "my_room.room.json"));
 	}
 }
+```
