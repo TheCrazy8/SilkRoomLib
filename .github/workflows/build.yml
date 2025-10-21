@@ -85,48 +85,8 @@ jobs:
           name: SilksongRooms-artifacts
           path: artifacts
 
-      - name: Package ZIPs (bin + Thunderstore)
-        shell: pwsh
-        run: |
-          $art = "artifacts"
-          $dll = Join-Path $art "SilkRoomUtils.dll"
-          $pdb = Join-Path $art "SilkRoomUtils.pdb"
-
-          if (-not (Test-Path $dll)) { throw "Missing $dll" }
-          if (-not (Test-Path $pdb)) { Write-Host "Warning: PDB not found, proceeding without it." }
-
-          # 1) Minimal binary zip
-          $binZip = Join-Path $art "SilkRoomUtils-bin.zip"
-          $toZip = @($dll)
-          if (Test-Path $pdb) { $toZip += $pdb }
-          Compress-Archive -Path $toZip -DestinationPath $binZip -Force
-
-          # 2) Thunderstore package zip
-          $stage = "ts_package"
-          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-          New-Item -ItemType Directory -Path $stage | Out-Null
-          New-Item -ItemType Directory -Path (Join-Path $stage "BepInEx/plugins/SilkRoomUtils") -Force | Out-Null
-
-          Copy-Item $dll (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.dll") -Force
-          if (Test-Path $pdb) { Copy-Item $pdb (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.pdb") -Force }
-
-          $version = "0.0.$env:GITHUB_RUN_NUMBER"
-          $repoUrl = "https://github.com/${{ github.repository }}"
-          $manifest = @{
-            name = "SilkRoomUtils"
-            version_number = $version
-            website_url = $repoUrl
-            description = "Room loading utilities for Silksong (BepInEx)."
-            dependencies = @()
-          } | ConvertTo-Json -Depth 3
-          Set-Content -Path (Join-Path $stage "manifest.json") -Value $manifest -Encoding UTF8
-
-          if (Test-Path "README.md") { Copy-Item "README.md" (Join-Path $stage "README.md") -Force }
-          if (Test-Path "icon.png") { Copy-Item "icon.png" (Join-Path $stage "icon.png") -Force }
-
-          $tsZip = Join-Path $art "SilkRoomUtils-Thunderstore.zip"
-          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $tsZip -Force
-          Remove-Item $stage -Recurse -Force
+      - name: Checkout repo (for README/icon)
+        uses: actions/checkout@v4
 
       - name: Generate random HEX and tag name
         id: meta
@@ -168,6 +128,76 @@ jobs:
             "Artifacts include the DLL, PDB, and optional zip (if produced)."
           ) -join $nl
           Set-Content -Path release-notes.md -Value $body -Encoding UTF8
+
+      - name: Package ZIPs (bin + Thunderstore)
+        env:
+          HEX: ${{ steps.meta.outputs.hex_color }}
+        shell: pwsh
+        run: |
+          $art = "artifacts"
+          $dll = Join-Path $art "SilkRoomUtils.dll"
+          $pdb = Join-Path $art "SilkRoomUtils.pdb"
+
+          if (-not (Test-Path $dll)) { throw "Missing $dll" }
+          if (-not (Test-Path $pdb)) { Write-Host "Warning: PDB not found, proceeding without it." }
+
+          # Create README/icon defaults if missing in repo root
+          if (-not (Test-Path "README.md")) {
+            $readme = "# SilkRoomUtils`n`nRoom loading utilities for Silksong (BepInEx).`n`nPackaged for Thunderstore."
+            Set-Content -Path "README.md" -Value $readme -Encoding UTF8
+          }
+
+          if (-not (Test-Path "icon.png")) {
+            try {
+              Add-Type -AssemblyName System.Drawing
+              $bmp = New-Object System.Drawing.Bitmap 256,256
+              $g = [System.Drawing.Graphics]::FromImage($bmp)
+              $r = [Convert]::ToInt32($env:HEX.Substring(0,2),16)
+              $gC = [Convert]::ToInt32($env:HEX.Substring(2,2),16)
+              $b = [Convert]::ToInt32($env:HEX.Substring(4,2),16)
+              $color = [System.Drawing.Color]::FromArgb(255,$r,$gC,$b)
+              $brush = New-Object System.Drawing.SolidBrush $color
+              $g.FillRectangle($brush,0,0,256,256)
+              $brush.Dispose(); $g.Dispose()
+              $bmp.Save("icon.png", [System.Drawing.Imaging.ImageFormat]::Png)
+              $bmp.Dispose()
+            } catch {
+              Write-Host "Failed to generate icon.png automatically: $_"
+            }
+          }
+
+          # 1) Minimal binary zip
+          $binZip = Join-Path $art "SilkRoomUtils-bin.zip"
+          $toZip = @($dll)
+          if (Test-Path $pdb) { $toZip += $pdb }
+          Compress-Archive -Path $toZip -DestinationPath $binZip -Force
+
+          # 2) Thunderstore package zip
+          $stage = "ts_package"
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $stage "BepInEx/plugins/SilkRoomUtils") -Force | Out-Null
+
+          Copy-Item $dll (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.dll") -Force
+          if (Test-Path $pdb) { Copy-Item $pdb (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.pdb") -Force }
+
+          $version = "0.0.$env:GITHUB_RUN_NUMBER"
+          $repoUrl = "https://github.com/${{ github.repository }}"
+          $manifest = @{
+            name = "SilkRoomUtils"
+            version_number = $version
+            website_url = $repoUrl
+            description = "Room loading utilities for Silksong (BepInEx)."
+            dependencies = @()
+          } | ConvertTo-Json -Depth 3
+          Set-Content -Path (Join-Path $stage "manifest.json") -Value $manifest -Encoding UTF8
+
+          Copy-Item "README.md" (Join-Path $stage "README.md") -Force
+          if (Test-Path "icon.png") { Copy-Item "icon.png" (Join-Path $stage "icon.png") -Force }
+
+          $tsZip = Join-Path $art "SilkRoomUtils-Thunderstore.zip"
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $tsZip -Force
+          Remove-Item $stage -Recurse -Force
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
