@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Controls generated plugin info. Version is used by the build system. -->
-    <AssemblyTitle>SilksongRooms.1</AssemblyTitle>
+    <AssemblyTitle>SilkRoomUtils</AssemblyTitle>
     <Version>0.1.0</Version>
   </PropertyGroup>
 </Project>

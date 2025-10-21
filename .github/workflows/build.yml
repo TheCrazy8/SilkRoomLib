@@ -48,9 +48,18 @@ jobs:
         run: |
           $out = "${{ github.workspace }}\artifacts"
           New-Item -ItemType Directory -Path $out -Force | Out-Null
-          Copy-Item "content/SilksongRooms/bin/Release/**/SilksongRooms.1.dll" $out -Recurse -Force -ErrorAction SilentlyContinue
-          Copy-Item "content/SilksongRooms/bin/Release/**/SilksongRooms.1.pdb" $out -Recurse -Force -ErrorAction SilentlyContinue
-          if (Test-Path "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip" $out }
+          $bin = "content/SilksongRooms/bin/Release"
+          # Prefer new assembly name outputs
+          $dll = Get-ChildItem $bin -Recurse -Filter "SilkRoomUtils.dll" | Select-Object -First 1
+          if (-not $dll) { $dll = Get-ChildItem $bin -Recurse -Filter "SilksongRooms.1.dll" | Select-Object -First 1 }
+          if ($dll) { Copy-Item $dll.FullName (Join-Path $out "SilkRoomUtils.dll") -Force }
+
+          $pdb = Get-ChildItem $bin -Recurse -Filter "SilkRoomUtils.pdb" | Select-Object -First 1
+          if (-not $pdb) { $pdb = Get-ChildItem $bin -Recurse -Filter "SilksongRooms.1.pdb" | Select-Object -First 1 }
+          if ($pdb) { Copy-Item $pdb.FullName (Join-Path $out "SilkRoomUtils.pdb") -Force }
+
+          if (Test-Path "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip" $out }
+          elseif (Test-Path "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip" $out }
           Get-ChildItem $out -Recurse | Format-List FullName
 
       - name: Upload artifact
@@ -75,6 +84,49 @@ jobs:
         with:
           name: SilksongRooms-artifacts
           path: artifacts
+
+      - name: Package ZIPs (bin + Thunderstore)
+        shell: pwsh
+        run: |
+          $art = "artifacts"
+          $dll = Join-Path $art "SilkRoomUtils.dll"
+          $pdb = Join-Path $art "SilkRoomUtils.pdb"
+
+          if (-not (Test-Path $dll)) { throw "Missing $dll" }
+          if (-not (Test-Path $pdb)) { Write-Host "Warning: PDB not found, proceeding without it." }
+
+          # 1) Minimal binary zip
+          $binZip = Join-Path $art "SilkRoomUtils-bin.zip"
+          $toZip = @($dll)
+          if (Test-Path $pdb) { $toZip += $pdb }
+          Compress-Archive -Path $toZip -DestinationPath $binZip -Force
+
+          # 2) Thunderstore package zip
+          $stage = "ts_package"
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          New-Item -ItemType Directory -Path (Join-Path $stage "BepInEx/plugins/SilkRoomUtils") -Force | Out-Null
+
+          Copy-Item $dll (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.dll") -Force
+          if (Test-Path $pdb) { Copy-Item $pdb (Join-Path $stage "BepInEx/plugins/SilkRoomUtils/SilkRoomUtils.pdb") -Force }
+
+          $version = "0.0.$env:GITHUB_RUN_NUMBER"
+          $repoUrl = "https://github.com/${{ github.repository }}"
+          $manifest = @{
+            name = "SilkRoomUtils"
+            version_number = $version
+            website_url = $repoUrl
+            description = "Room loading utilities for Silksong (BepInEx)."
+            dependencies = @()
+          } | ConvertTo-Json -Depth 3
+          Set-Content -Path (Join-Path $stage "manifest.json") -Value $manifest -Encoding UTF8
+
+          if (Test-Path "README.md") { Copy-Item "README.md" (Join-Path $stage "README.md") -Force }
+          if (Test-Path "icon.png") { Copy-Item "icon.png" (Join-Path $stage "icon.png") -Force }
+
+          $tsZip = Join-Path $art "SilkRoomUtils-Thunderstore.zip"
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $tsZip -Force
+          Remove-Item $stage -Recurse -Force
 
       - name: Generate random HEX and tag name
         id: meta
