@@ -1,0 +1,118 @@
+name: Build and Release SilksongRooms
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            7.0.x
+            6.0.x
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\NuGet\v3-cache
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/packages.lock.json', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      - name: Restore
+        working-directory: content/SilksongRooms
+        run: |
+          dotnet restore SilksongRooms.1.csproj
+
+      - name: Build (Release)
+        working-directory: content/SilksongRooms
+        run: |
+          dotnet build SilksongRooms.1.csproj -c Release -p:SkipCopyMod=true -p:game-version=latest --nologo --no-restore
+
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          $out = "${{ github.workspace }}\artifacts"
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          Copy-Item "content/SilksongRooms/bin/Release/**/SilksongRooms.1.dll" $out -Recurse -Force -ErrorAction SilentlyContinue
+          Copy-Item "content/SilksongRooms/bin/Release/**/SilksongRooms.1.pdb" $out -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip" $out }
+          Get-ChildItem $out -Recurse | Format-List FullName
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SilksongRooms-artifacts
+          path: artifacts
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub Release
+    runs-on: windows-latest
+    # Only release for tag pushes
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: SilksongRooms-artifacts
+          path: artifacts
+
+      - name: Derive HEX color from tag name
+        id: hex
+        shell: pwsh
+        run: |
+          $tag = "$env:GITHUB_REF_NAME"
+          # Look for patterns like v1.2.3-ff00aa or any 6-hex sequence, with or without '#'
+          if ($tag -match '(?i)(?:#|-)?([0-9a-f]{6})') {
+            $hex = $Matches[1].ToLower()
+          } else {
+            $hex = '000000'
+          }
+          echo "HEX_COLOR=$hex" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "Derived HEX color: #$hex"
+
+      - name: Compose release notes
+        id: notes
+        shell: pwsh
+        run: |
+          $hex = "$env:HEX_COLOR"
+          $tag = "$env:GITHUB_REF_NAME"
+          $nl = "`n"
+          $body = @(
+            "Release for tag $tag",
+            "",
+            "Color: #$hex",
+            "",
+            "![color](https://img.shields.io/badge/color-%23$hex-$hex?style=for-the-badge)",
+            "",
+            "Artifacts include the DLL, PDB, and optional zip (if produced)."
+          ) -join $nl
+          Set-Content -Path release-notes.md -Value $body -Encoding UTF8
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: SilksongRooms.1 ${{ github.ref_name }} — #${{ env.HEX_COLOR }}
+          body_path: release-notes.md
+          files: |
+            artifacts/**

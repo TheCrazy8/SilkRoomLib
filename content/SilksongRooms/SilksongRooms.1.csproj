@@ -29,7 +29,7 @@
     <RoomContent Include="Rooms\**\*" />
   </ItemGroup>
 
-  <Target Name="CopyMod" AfterTargets="PostBuildEvent">
+  <Target Name="CopyMod" AfterTargets="PostBuildEvent" Condition="'$(SkipCopyMod)' != 'true'">
     <ItemGroup>
       <Binaries Include="$(TargetPath)" />
       <Binaries Include="$(TargetDir)/$(TargetName).pdb" />
