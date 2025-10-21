@@ -2,10 +2,9 @@ name: Build and Release SilksongRooms
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [ '**' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ '**' ]
   workflow_dispatch:
 
 jobs:
@@ -64,8 +63,8 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: windows-latest
-    # Only release for tag pushes
-    if: startsWith(github.ref, 'refs/tags/')
+    # Release on any push (every commit). Avoid PR events.
+    if: github.event_name == 'push'
     needs: [build]
     permissions:
       contents: write
@@ -77,29 +76,38 @@ jobs:
           name: SilksongRooms-artifacts
           path: artifacts
 
-      - name: Derive HEX color from tag name
-        id: hex
+      - name: Generate random HEX and tag name
+        id: meta
         shell: pwsh
         run: |
-          $tag = "$env:GITHUB_REF_NAME"
-          # Look for patterns like v1.2.3-ff00aa or any 6-hex sequence, with or without '#'
-          if ($tag -match '(?i)(?:#|-)?([0-9a-f]{6})') {
-            $hex = $Matches[1].ToLower()
-          } else {
-            $hex = '000000'
-          }
-          echo "HEX_COLOR=$hex" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          echo "Derived HEX color: #$hex"
+          # Random 6-digit hex color
+          $hex = -join (1..6 | ForEach-Object { '{0:x}' -f (Get-Random -Minimum 0 -Maximum 16) })
+          Write-Host "Random HEX color: #$hex"
+
+          # Create a unique tag name for this commit
+          $branch = $env:GITHUB_REF_NAME -replace '[^A-Za-z0-9._-]','-'
+          $sha7 = $env:GITHUB_SHA.Substring(0,7)
+          $run = $env:GITHUB_RUN_NUMBER
+          $tag = "auto-$branch-$sha7-$run"
+          Write-Host "Tag name: $tag"
+
+          # Publish step outputs for later steps
+          $out = $env:GITHUB_OUTPUT
+          Add-Content -Path $out -Value "hex_color=$hex"
+          Add-Content -Path $out -Value "tag_name=$tag"
 
       - name: Compose release notes
         id: notes
+        env:
+          HEX: ${{ steps.meta.outputs.hex_color }}
+          TAG: ${{ steps.meta.outputs.tag_name }}
         shell: pwsh
         run: |
-          $hex = "$env:HEX_COLOR"
-          $tag = "$env:GITHUB_REF_NAME"
+          $hex = "$env:HEX"
+          $tag = "$env:TAG"
           $nl = "`n"
           $body = @(
-            "Release for tag $tag",
+            "Automated release for $tag",
             "",
             "Color: #$hex",
             "",
@@ -112,7 +120,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: SilksongRooms.1 ${{ github.ref_name }} — #${{ env.HEX_COLOR }}
+          name: SilksongRooms.1 ${{ steps.meta.outputs.tag_name }} — #${{ steps.meta.outputs.hex_color }}
+          tag_name: ${{ steps.meta.outputs.tag_name }}
           body_path: release-notes.md
           files: |
             artifacts/**
