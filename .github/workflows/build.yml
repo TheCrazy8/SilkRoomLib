@@ -251,7 +251,7 @@ jobs:
           # Allow overriding dependency version via env/vars; fallback to 1.0.0
           $depVersion = $env:BEPINEX_DEP_VERSION
           if ([string]::IsNullOrWhiteSpace($depVersion)) { $depVersion = "1.0.0" }
-          $deps = @("BepInEx-BepInExPack_Silksong-$depVersion")
+          $deps = @("BepInEx-BepInExPack_Silksong-5.4.2304")
           $manifest = @{
             name = "SilkRoomUtils"
             version_number = $version
