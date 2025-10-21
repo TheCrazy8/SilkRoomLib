@@ -102,14 +102,14 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repo (for README/icon)
+        uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           name: SilksongRooms-artifacts
           path: artifacts
-
-      - name: Checkout repo (for README/icon)
-        uses: actions/checkout@v4
 
       - name: Generate random HEX and tag name
         id: meta
