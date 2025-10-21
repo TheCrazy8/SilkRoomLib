@@ -1,0 +1,10 @@
+{
+  "id": "example_room",
+  "bundle": "Bundles/example_room.bundle",
+  "prefab": "ExampleRoomPrefab",
+  "entryPoint": { "x": 0.0, "y": 0.0, "z": 0.0 },
+  "connections": [
+    { "toRoomId": "existing_room_id", "doorName": "ExitA" }
+  ],
+  "tags": ["demo", "test"]
+}
