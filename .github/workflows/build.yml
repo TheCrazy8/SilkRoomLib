@@ -52,11 +52,13 @@ jobs:
           # Prefer new assembly name outputs
           $dll = Get-ChildItem $bin -Recurse -Filter "SilkRoomUtils.dll" | Select-Object -First 1
           if (-not $dll) { $dll = Get-ChildItem $bin -Recurse -Filter "SilksongRooms.1.dll" | Select-Object -First 1 }
-          if ($dll) { Copy-Item $dll.FullName (Join-Path $out "SilkRoomUtils.dll") -Force }
+          if (-not $dll) { $dll = Get-ChildItem $bin -Recurse -Filter "*.dll" | Select-Object -First 1 }
+          if ($dll) { Copy-Item $dll.FullName (Join-Path $out "SilkRoomUtils.dll") -Force } else { Write-Host "No DLL found under $bin" }
 
           $pdb = Get-ChildItem $bin -Recurse -Filter "SilkRoomUtils.pdb" | Select-Object -First 1
           if (-not $pdb) { $pdb = Get-ChildItem $bin -Recurse -Filter "SilksongRooms.1.pdb" | Select-Object -First 1 }
-          if ($pdb) { Copy-Item $pdb.FullName (Join-Path $out "SilkRoomUtils.pdb") -Force }
+          if (-not $pdb) { $pdb = Get-ChildItem $bin -Recurse -Filter "*.pdb" | Select-Object -First 1 }
+          if ($pdb) { Copy-Item $pdb.FullName (Join-Path $out "SilkRoomUtils.pdb") -Force } else { Write-Host "No PDB found under $bin" }
 
           if (Test-Path "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip" $out }
           elseif (Test-Path "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip" $out }
@@ -218,7 +220,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: SilksongRooms.1 ${{ steps.meta.outputs.tag_name }} — #${{ steps.meta.outputs.hex_color }}
+          name: SilkRoomUtils ${{ steps.meta.outputs.tag_name }} — #${{ steps.meta.outputs.hex_color }}
           tag_name: ${{ steps.meta.outputs.tag_name }}
           body_path: release-notes.md
           files: |
