@@ -201,12 +201,16 @@ jobs:
 
           $version = "0.0.$env:GITHUB_RUN_NUMBER"
           $repoUrl = "https://github.com/${{ github.repository }}"
+          # Allow overriding dependency version via env/vars; fallback to 1.0.0
+          $depVersion = $env:BEPINEX_DEP_VERSION
+          if ([string]::IsNullOrWhiteSpace($depVersion)) { $depVersion = "1.0.0" }
+          $deps = @("BepInEx-BepInExPack_Silksong-$depVersion")
           $manifest = @{
             name = "SilkRoomUtils"
             version_number = $version
             website_url = $repoUrl
             description = "Room loading utilities for Silksong (BepInEx)."
-            dependencies = @()
+            dependencies = $deps
           } | ConvertTo-Json -Depth 3
           Set-Content -Path (Join-Path $stage "manifest.json") -Value $manifest -Encoding UTF8
 
