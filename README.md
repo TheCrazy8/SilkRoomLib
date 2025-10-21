@@ -1,4 +1,4 @@
-﻿SilksongRooms: shareable room loader
+SilksongRooms: shareable room loader
 
 This repo includes a template (`content/SilksongRooms`) that ships a reusable room loader and a tiny integrator. It lets any mod load room JSON files (`*.room.json`) and Unity AssetBundles.
 
