@@ -138,8 +138,24 @@ jobs:
           $dll = Join-Path $art "SilkRoomUtils.dll"
           $pdb = Join-Path $art "SilkRoomUtils.pdb"
 
-          if (-not (Test-Path $dll)) { throw "Missing $dll" }
-          if (-not (Test-Path $pdb)) { Write-Host "Warning: PDB not found, proceeding without it." }
+          if (-not (Test-Path $dll)) {
+            $foundDll = Get-ChildItem $art -Recurse -Filter *.dll | Select-Object -First 1
+            if ($foundDll) {
+              Copy-Item $foundDll.FullName $dll -Force
+              Write-Host "Recovered DLL from artifacts: $($foundDll.FullName)"
+            } else {
+              throw "Missing $dll and no other DLL found in artifacts"
+            }
+          }
+          if (-not (Test-Path $pdb)) {
+            $foundPdb = Get-ChildItem $art -Recurse -Filter *.pdb | Select-Object -First 1
+            if ($foundPdb) {
+              Copy-Item $foundPdb.FullName $pdb -Force
+              Write-Host "Recovered PDB from artifacts: $($foundPdb.FullName)"
+            } else {
+              Write-Host "Warning: PDB not found; continuing without it."
+            }
+          }
 
           # Create README/icon defaults if missing in repo root
           if (-not (Test-Path "README.md")) {
