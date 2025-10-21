@@ -80,7 +80,7 @@ jobs:
           Get-ChildItem $out -Recurse | Format-List FullName
 
           if (-not (Test-Path (Join-Path $out "SilkRoomUtils.dll"))) {
-            Write-Host "ERROR: Expected DLL not found in artifacts. Build output under $bin:" 
+            Write-Host "ERROR: Expected DLL not found in artifacts. Build output under ${bin}:" 
             Get-ChildItem $bin -Recurse | Select-Object FullName,Length | Format-Table -AutoSize
             throw "Artifact collection failed: SilkRoomUtils.dll missing"
           }
