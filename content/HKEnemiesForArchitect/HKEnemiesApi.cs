@@ -14,12 +14,17 @@ public static class HKEnemiesApi
     internal static void Bind(EnemyLibrary library)
     {
         _library = library;
-        EnemiesChanged?.Invoke(_library.Enemies);
+        NotifyChanged(_library.Enemies);
+    }
+
+    internal static void NotifyChanged(IReadOnlyDictionary<string, EnemyEntry> enemies)
+    {
+        EnemiesChanged?.Invoke(enemies);
     }
 
     public static IReadOnlyDictionary<string, EnemyEntry> GetAll()
     {
-        return _library?.Enemies ?? (IReadOnlyDictionary<string, EnemyEntry>)Array.Empty<EnemyEntry>();
+        return _library?.Enemies ?? new Dictionary<string, EnemyEntry>();
     }
 
     public static bool TryGetEnemyPrefab(string id, out GameObject? prefab)

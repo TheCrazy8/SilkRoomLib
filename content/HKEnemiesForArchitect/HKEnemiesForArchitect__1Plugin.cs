@@ -61,7 +61,7 @@ public partial class HKEnemiesForArchitect__1Plugin : BaseUnityPlugin
         {
             Directory.CreateDirectory(_enemiesPath.Value);
             var count = _library.LoadAll(_enemiesPath.Value);
-            HKEnemiesApi.EnemiesChanged?.Invoke(_library.Enemies);
+            HKEnemiesApi.NotifyChanged(_library.Enemies);
             WriteManifest(_enemiesPath.Value);
             Logger.LogInfo($"Loaded {count} enemy prefab(s) from '{_enemiesPath.Value}'.");
         }
