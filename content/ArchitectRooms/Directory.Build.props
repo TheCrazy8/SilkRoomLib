@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- Controls generated plugin info. Version is used by the build system. -->
+    <AssemblyTitle>ArchitectRooms</AssemblyTitle>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>

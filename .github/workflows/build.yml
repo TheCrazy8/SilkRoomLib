@@ -38,10 +38,20 @@ jobs:
         run: |
           dotnet restore SilksongRooms.1.csproj -p:game-version=latest -p:UnityVersion=6000.*
 
+      - name: Restore (HKEnemiesForArchitect)
+        working-directory: content/HKEnemiesForArchitect
+        run: |
+          dotnet restore HKEnemiesForArchitect.1.csproj -p:game-version=latest -p:UnityVersion=6000.*
+
       - name: Build (Release)
         working-directory: content/SilksongRooms
         run: |
           dotnet build SilksongRooms.1.csproj -c Release -p:SkipCopyMod=true -p:game-version=latest -p:UnityVersion=6000.* --nologo --no-restore
+
+      - name: Build HKEnemiesForArchitect (Release)
+        working-directory: content/HKEnemiesForArchitect
+        run: |
+          dotnet build HKEnemiesForArchitect.1.csproj -c Release -p:SkipCopyMod=true -p:game-version=latest -p:UnityVersion=6000.* --nologo --no-restore
 
       - name: Collect artifacts
         shell: pwsh
@@ -49,6 +59,7 @@ jobs:
           $out = "${{ github.workspace }}\artifacts"
           New-Item -ItemType Directory -Path $out -Force | Out-Null
           $bin = "content/SilksongRooms/bin/Release"
+          $hkBin = "content/HKEnemiesForArchitect/bin/Release"
           # Prefer explicit TFM path first for reliability
           $tfm = "netstandard2.1"
           $explicitDll = Join-Path $bin (Join-Path $tfm "SilkRoomUtils.dll")
@@ -76,6 +87,27 @@ jobs:
           if (Test-Path "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilkRoomUtils.zip" $out }
           elseif (Test-Path "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip") { Copy-Item "content/SilksongRooms/bin/Publish/SilksongRooms.1.zip" $out }
 
+          # HKEnemiesForArchitect artifacts
+          $hkExplicitDll = Join-Path $hkBin (Join-Path $tfm "HKEnemiesForArchitect.dll")
+          if (Test-Path $hkExplicitDll) {
+            Copy-Item $hkExplicitDll (Join-Path $out "HKEnemiesForArchitect.dll") -Force
+          } else {
+            $hkDll = Get-ChildItem $hkBin -Recurse -Filter "HKEnemiesForArchitect.dll" | Select-Object -First 1
+            if (-not $hkDll) { $hkDll = Get-ChildItem $hkBin -Recurse -Filter "*.dll" | Select-Object -First 1 }
+            if ($hkDll) { Copy-Item $hkDll.FullName (Join-Path $out "HKEnemiesForArchitect.dll") -Force }
+          }
+
+          $hkExplicitPdb = [System.IO.Path]::ChangeExtension($hkExplicitDll, ".pdb")
+          if (Test-Path $hkExplicitPdb) {
+            Copy-Item $hkExplicitPdb (Join-Path $out "HKEnemiesForArchitect.pdb") -Force
+          } else {
+            $hkPdb = Get-ChildItem $hkBin -Recurse -Filter "HKEnemiesForArchitect.pdb" | Select-Object -First 1
+            if (-not $hkPdb) { $hkPdb = Get-ChildItem $hkBin -Recurse -Filter "*.pdb" | Select-Object -First 1 }
+            if ($hkPdb) { Copy-Item $hkPdb.FullName (Join-Path $out "HKEnemiesForArchitect.pdb") -Force }
+          }
+
+          if (Test-Path "content/HKEnemiesForArchitect/bin/Publish/HKEnemiesForArchitect.zip") { Copy-Item "content/HKEnemiesForArchitect/bin/Publish/HKEnemiesForArchitect.zip" $out }
+
           Write-Host "Collected artifacts:"
           Get-ChildItem $out -Recurse | Format-List FullName
 
@@ -83,6 +115,12 @@ jobs:
             Write-Host "ERROR: Expected DLL not found in artifacts. Build output under ${bin}:" 
             Get-ChildItem $bin -Recurse | Select-Object FullName,Length | Format-Table -AutoSize
             throw "Artifact collection failed: SilkRoomUtils.dll missing"
+          }
+
+          if (-not (Test-Path (Join-Path $out "HKEnemiesForArchitect.dll"))) {
+            Write-Host "ERROR: Expected DLL not found in artifacts. Build output under ${hkBin}:" 
+            Get-ChildItem $hkBin -Recurse | Select-Object FullName,Length | Format-Table -AutoSize
+            throw "Artifact collection failed: HKEnemiesForArchitect.dll missing"
           }
 
       - name: Upload artifact
