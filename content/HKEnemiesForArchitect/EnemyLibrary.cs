@@ -9,10 +9,10 @@ namespace HKEnemiesForArchitect._1;
 
 public sealed class EnemyEntry
 {
-    public string Id { get; init; } = string.Empty;          // normalized identifier (asset name sans extension)
-    public string AssetName { get; init; } = string.Empty;   // full asset name inside bundle
-    public string BundlePath { get; init; } = string.Empty;  // filesystem path of the bundle
-    public GameObject? Prefab { get; init; }
+    public string Id { get; set; } = string.Empty;          // normalized identifier (asset name sans extension)
+    public string AssetName { get; set; } = string.Empty;   // full asset name inside bundle
+    public string BundlePath { get; set; } = string.Empty;  // filesystem path of the bundle
+    public GameObject? Prefab { get; set; }
 }
 
 public sealed class EnemyLibrary : IDisposable
